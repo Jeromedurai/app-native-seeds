@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Global utility classes for better alignment */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better focus outline - only for form inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #10B981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Remove focus outline for navigation and general elements */
+*:focus {
+  outline: none;
+}
+
+/* Remove focus outline for navigation icons */
+.nav-icon:focus,
+.nav-icon button:focus,
+.nav-icon a:focus {
+  outline: none;
+}
+
+/* Form input improvements */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #10B981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Consistent container max-widths */
+.container-responsive {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Button improvements */
+.btn-primary {
+  background-color: #10B981;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background-color: #9CA3AF;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Mobile menu improvements */
+@media (max-width: 768px) {
+  .mobile-menu-item {
+    border-left: 3px solid transparent;
+    transition: border-color 0.2s ease-in-out;
+  }
+  
+  .mobile-menu-item.active {
+    border-left-color: #10B981;
+    background-color: #F0FDF4;
+  }
+  
+  .mobile-menu-item:hover {
+    border-left-color: #10B981;
+  }
+}
+
+/* Dropdown animation styles */
+.dropdown-menu {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Ensure no gap between trigger and dropdown */
+.nav-icon {
+  position: relative;
+}
+
+.nav-icon .dropdown-menu {
+  margin-top: 0;
+  padding-top: 0.5rem;
+}
+
+
+
+/* Hover effect for dropdown triggers */
+.dropdown-trigger {
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdown-trigger:hover {
+  transform: translateY(-1px);
+  color: #059669;
+}
+
+/* Hover effect for dropdown text labels */
+.dropdown-label {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.dropdown-label:hover {
+  color: #059669;
+  transform: scale(1.05);
+}
+
+/* Dropdown menu items animation */
+.dropdown-menu-item {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdown-menu.show .dropdown-menu-item {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Stagger animation for dropdown items */
+.dropdown-menu.show .dropdown-menu-item:nth-child(1) { transition-delay: 0.05s; }
+.dropdown-menu.show .dropdown-menu-item:nth-child(2) { transition-delay: 0.1s; }
+.dropdown-menu.show .dropdown-menu-item:nth-child(3) { transition-delay: 0.15s; }
+.dropdown-menu.show .dropdown-menu-item:nth-child(4) { transition-delay: 0.2s; }
+.dropdown-menu.show .dropdown-menu-item:nth-child(5) { transition-delay: 0.25s; }
+.dropdown-menu.show .dropdown-menu-item:nth-child(6) { transition-delay: 0.3s; }
