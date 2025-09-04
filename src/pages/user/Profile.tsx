@@ -58,9 +58,15 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { state: { message: 'You have been logged out successfully' } });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login', { state: { message: 'You have been logged out successfully' } });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still navigate to login even if logout API fails
+      navigate('/login', { state: { message: 'You have been logged out' } });
+    }
   };
 
   if (!user) {

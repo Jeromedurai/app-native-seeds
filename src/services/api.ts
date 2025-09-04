@@ -1,154 +1,190 @@
-import { ApiResponse, Product, ProductMaster, User, CartItem, Order, MenuMaster } from '../types';
-import endpoints from '../endpoint';
+import { 
+  ApiResponse, 
+  User, 
+  LoginCredentials, 
+  RegisterData, 
+  AuthResponse,
+  PasswordResetRequest,
+  PasswordResetConfirm,
+  VerificationRequest,
+  VerificationConfirm,
+  SocialLoginData,
+  PasswordStrength,
+  PhoneNumberValidation
+} from '../types';
+import endpoints from '../api/endpoints/endpoints';
+import { ILoginRequest, ILoginResponse, ILoginResponseData, ILogoutRequest, ILogoutResponse } from '../modals/interface';
 
-class ApiService {
-  private async request<T>(
-    url: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
+// New interface for real API response
+export interface RealAuthResponse {
+  user: ILoginResponseData;
+  token: string | null;
+  expiresIn: number;
+}
 
-    // Add auth token if available
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
-    }
-
+export class RealAuthApi {
+  // User authentication using real endpoint - returns actual backend data
+  async login(credentials: LoginCredentials): Promise<ApiResponse<RealAuthResponse>> {
     try {
-      const response = await fetch(url, config);
-      const data = await response.json();
+      const payload: ILoginRequest = {
+        emailOrPhone: credentials.emailOrPhone,
+        password: credentials.password,
+        rememberMe: credentials.rememberMe ?? false
+      };
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
+      const response: ILoginResponse = await endpoints.login(payload);
+      
+      if (response.exception) {
+        return {
+          data: null as any,
+          success: false,
+          message: response.exception || 'Login failed'
+        };
       }
 
+      // Return the real API response data directly
       return {
-        data,
-        success: true,
+        data: {
+          user: response.data,
+          token: response.data.token || `token_${response.data.userId}_${Date.now()}`,
+          expiresIn: 86400 // 24 hours
+        },
+        success: true
       };
     } catch (error) {
       return {
-        data: null as T,
+        data: null as any,
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : 'Login failed'
       };
     }
   }
 
-  // Products
-  async getProducts(page: number = 1, limit: number = 10): Promise<ApiResponse<Product[]>> {
-    return this.request<Product[]>(`${endpoints.products.list}?page=${page}&limit=${limit}`);
+  // Logout user using real endpoint
+  async logout(payload: ILogoutRequest): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response: ILogoutResponse = await endpoints.logout(payload);
+      
+      if (response.exception) {
+        return {
+          data: null as any,
+          success: false,
+          message: response.exception || 'Logout failed'
+        };
+      }
+
+      return {
+        data: { message: response.data || 'Logged out successfully' },
+        success: true
+      };
+    } catch (error) {
+      return {
+        data: null as any,
+        success: false,
+        message: error instanceof Error ? error.message : 'Logout failed'
+      };
+    }
   }
 
-  async getProductMaster(): Promise<ApiResponse<ProductMaster>> {
-    return this.request<ProductMaster>(endpoints.products.master);
+  // Placeholder methods for other auth operations
+  // These would need to be implemented with real endpoints when available
+  
+  async register(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
+    throw new Error('Registration endpoint not yet implemented');
   }
 
-  async getProduct(id: number): Promise<ApiResponse<Product>> {
-    return this.request<Product>(endpoints.products.detail(id.toString()));
+  async requestPasswordReset(data: PasswordResetRequest): Promise<ApiResponse<{ message: string }>> {
+    throw new Error('Password reset endpoint not yet implemented');
   }
 
-  async getProductsByCategory(categoryId: number, page: number = 1, limit: number = 10): Promise<ApiResponse<Product[]>> {
-    return this.request<Product[]>(`${endpoints.products.byCategory(categoryId.toString())}?page=${page}&limit=${limit}`);
+  async confirmPasswordReset(data: PasswordResetConfirm): Promise<ApiResponse<{ message: string }>> {
+    throw new Error('Password reset confirmation endpoint not yet implemented');
   }
 
-  async searchProducts(query: string): Promise<ApiResponse<Product[]>> {
-    return this.request<Product[]>(endpoints.products.search(query));
+  async requestVerification(data: VerificationRequest): Promise<ApiResponse<{ message: string }>> {
+    throw new Error('Verification request endpoint not yet implemented');
   }
 
-  // Menu
-  async getMenuMaster(): Promise<ApiResponse<MenuMaster>> {
-    return this.request<MenuMaster>(endpoints.menu.master);
+  async confirmVerification(data: VerificationConfirm): Promise<ApiResponse<{ message: string }>> {
+    throw new Error('Verification confirmation endpoint not yet implemented');
   }
 
-  // Authentication
-  async login(email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> {
-    return this.request<{ user: User; token: string }>(endpoints.auth.login, {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+  async socialLogin(data: SocialLoginData): Promise<ApiResponse<AuthResponse>> {
+    throw new Error('Social login endpoint not yet implemented');
   }
 
-  async register(userData: { email: string; password: string; name: string }): Promise<ApiResponse<{ user: User; token: string }>> {
-    return this.request<{ user: User; token: string }>(endpoints.auth.register, {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+  async getProfile(token: string): Promise<ApiResponse<User>> {
+    throw new Error('Profile endpoint not yet implemented');
   }
 
-  async logout(): Promise<ApiResponse<void>> {
-    return this.request<void>(endpoints.auth.logout, {
-      method: 'POST',
-    });
+  async updateProfile(token: string, updates: Partial<User>): Promise<ApiResponse<User>> {
+    throw new Error('Profile update endpoint not yet implemented');
   }
 
-  async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>(endpoints.auth.profile);
+  // Utility methods
+  validateIndianPhoneNumber(phone: string): PhoneNumberValidation {
+    // Remove all non-digit characters except +
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Check if it's a valid Indian number
+    // Indian mobile numbers: +91 followed by 10 digits starting with 6,7,8,9
+    const indianMobileRegex = /^(\+91)?[6-9]\d{9}$/;
+    
+    if (indianMobileRegex.test(cleaned)) {
+      const withCountryCode = cleaned.startsWith('+91') ? cleaned : `+91${cleaned}`;
+      const nationalNumber = withCountryCode.substring(3);
+      
+      return {
+        isValid: true,
+        formatted: `+91 ${nationalNumber.substring(0, 5)} ${nationalNumber.substring(5)}`,
+        countryCode: '+91',
+        nationalNumber
+      };
+    }
+
+    return {
+      isValid: false,
+      formatted: phone,
+      countryCode: '',
+      nationalNumber: ''
+    };
   }
 
-  // Cart
-  async getCart(): Promise<ApiResponse<CartItem[]>> {
-    return this.request<CartItem[]>(endpoints.cart.get);
-  }
+  checkPasswordStrength(password: string): PasswordStrength {
+    const feedback: string[] = [];
+    let score = 0;
 
-  async addToCart(productId: string, quantity: number): Promise<ApiResponse<CartItem>> {
-    return this.request<CartItem>(endpoints.cart.add, {
-      method: 'POST',
-      body: JSON.stringify({ productId, quantity }),
-    });
-  }
+    const hasMinLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-  async updateCartItem(productId: string, quantity: number): Promise<ApiResponse<CartItem>> {
-    return this.request<CartItem>(endpoints.cart.update, {
-      method: 'PUT',
-      body: JSON.stringify({ productId, quantity }),
-    });
-  }
+    if (hasMinLength) score++;
+    else feedback.push('Password must be at least 8 characters long');
 
-  async removeFromCart(productId: string): Promise<ApiResponse<void>> {
-    return this.request<void>(endpoints.cart.remove, {
-      method: 'DELETE',
-      body: JSON.stringify({ productId }),
-    });
-  }
+    if (hasUppercase) score++;
+    else feedback.push('Add uppercase letters');
 
-  async clearCart(): Promise<ApiResponse<void>> {
-    return this.request<void>(endpoints.cart.clear, {
-      method: 'DELETE',
-    });
-  }
+    if (hasLowercase) score++;
+    else feedback.push('Add lowercase letters');
 
-  // Orders
-  async createOrder(orderData: any): Promise<ApiResponse<Order>> {
-    return this.request<Order>(endpoints.orders.create, {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    });
-  }
+    if (hasNumber) score++;
+    else feedback.push('Add numbers');
 
-  async getOrders(): Promise<ApiResponse<Order[]>> {
-    return this.request<Order[]>(endpoints.orders.list);
-  }
+    if (hasSpecialChar) score++;
+    else feedback.push('Add special characters');
 
-  async getOrder(id: string): Promise<ApiResponse<Order>> {
-    return this.request<Order>(endpoints.orders.detail(id));
-  }
-
-  async cancelOrder(id: string): Promise<ApiResponse<void>> {
-    return this.request<void>(endpoints.orders.cancel(id), {
-      method: 'PUT',
-    });
+    return {
+      score,
+      feedback,
+      hasMinLength,
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar
+    };
   }
 }
 
-export const apiService = new ApiService();
-export default apiService; 
+export const realAuthApi = new RealAuthApi(); 

@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { getProducts, getMenuItems, getProductsByCategory } from '../services/mockData';
 import { mockCartApi } from '../services/mockCartApi';
+import { realAuthApi } from '../services/api';
 import { mockAuthApi } from '../services/mockAuthApi';
 import { generateId } from '../utils';
 
@@ -250,10 +251,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const login = useCallback(async (credentials: LoginCredentials) => {
     setLoading({ isLoading: true, error: null });
     try {
-      const response = await mockAuthApi.login(credentials);
+      const response = await realAuthApi.login(credentials);
       if (response.success) {
-        localStorage.setItem('authToken', response.data.token);
-        dispatch({ type: 'SET_USER', payload: response.data.user });
+        localStorage.setItem('authToken', response.data.token || '');
+        
+        // Transform the real API response to match the User interface
+        const user: User = {
+          id: response.data.user.userId.toString(),
+          email: response.data.user.email,
+          phone: response.data.user.phone,
+          name: `${response.data.user.firstName} ${response.data.user.lastName}`,
+          emailVerified: true, // Assuming verified if login successful
+          phoneVerified: true,  // Assuming verified if login successful
+          createdAt: new Date().toISOString(),
+          lastLogin: response.data.user.lastLogin,
+          role: response.data.user.roles.length > 0 ? (response.data.user.roles[0].name as 'customer' | 'admin' | 'executive') : 'customer'
+        };
+        
+        dispatch({ type: 'SET_USER', payload: user });
         // Fetch cart after login
         await fetchCart();
       } else {
@@ -270,7 +285,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const register = useCallback(async (userData: RegisterData) => {
     setLoading({ isLoading: true, error: null });
     try {
-      const response = await mockAuthApi.register(userData);
+      const response = await realAuthApi.register(userData);
       if (response.success) {
         localStorage.setItem('authToken', response.data.token);
         dispatch({ type: 'SET_USER', payload: response.data.user });
@@ -287,11 +302,34 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }, [setLoading, fetchCart]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('authToken');
-    dispatch({ type: 'SET_USER', payload: null });
-    clearCart();
-  }, [clearCart]);
+  const logout = useCallback(async () => {
+    try {
+      // Get current user and token for logout request
+      const currentUser = state.user;
+      const authToken = localStorage.getItem('authToken');
+      
+      if (currentUser && authToken) {
+        // Call real logout endpoint
+        const response = await realAuthApi.logout({
+          userId: parseInt(currentUser.id),
+          token: authToken
+        });
+        
+        if (response.success) {
+          console.log('Logout successful:', response.data.message);
+        } else {
+          console.warn('Logout warning:', response.message);
+        }
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clean up local state regardless of API response
+      localStorage.removeItem('authToken');
+      dispatch({ type: 'SET_USER', payload: null });
+      clearCart();
+    }
+  }, [clearCart, state.user]);
 
   const requestPasswordReset = useCallback(async (data: PasswordResetRequest) => {
     setLoading({ isLoading: true, error: null });
@@ -369,7 +407,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const socialLogin = useCallback(async (data: SocialLoginData) => {
     setLoading({ isLoading: true, error: null });
     try {
-      const response = await mockAuthApi.socialLogin(data);
+      const response = await realAuthApi.socialLogin(data);
       if (response.success) {
         localStorage.setItem('authToken', response.data.token);
         dispatch({ type: 'SET_USER', payload: response.data.user });
