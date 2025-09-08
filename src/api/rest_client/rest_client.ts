@@ -1,4 +1,4 @@
-import Axios, { AxiosRequestConfig } from 'axios'
+import axios from 'axios'
 import {
     EXPIRE_TIME,
     TIME_CONVERTION_UNIT,
@@ -8,8 +8,8 @@ import {
 import { getBrowserCache, setBrowserCache } from '../util/functions'
 
 class AxiosClient {
-    tenantApiConfig: AxiosRequestConfig = {}
-    systemApiConfig: AxiosRequestConfig = {}
+    tenantApiConfig: any = {}
+    systemApiConfig: any = {}
     baseAppUrl = localStorage.getItem('ApiBaseUrl')
         ? localStorage.getItem('ApiBaseUrl')
         : ''
@@ -34,9 +34,9 @@ class AxiosClient {
             )
             this.setTenantToken(response.data)
             this.setDefaults()
-            return Axios.get<T>(`${url}`, this.tenantApiConfig)
+            return axios.get<T>(`${url}`, this.tenantApiConfig)
         }
-        return Axios.get<T>(`${url}`, this.tenantApiConfig)
+        return axios.get<T>(`${url}`, this.tenantApiConfig)
     }
 
     /**
@@ -51,9 +51,9 @@ class AxiosClient {
             )
             this.setTenantToken(response.data)
             this.setDefaults()
-            return Axios.patch<T>(`${url}`, data, this.tenantApiConfig)
+            return axios.patch<T>(`${url}`, data, this.tenantApiConfig)
         }
-        return Axios.patch<T>(`${url}`, data, this.tenantApiConfig)
+        return axios.patch<T>(`${url}`, data, this.tenantApiConfig)
     }
 
     /**
@@ -70,7 +70,7 @@ class AxiosClient {
                 )
                 this.setTenantToken(response.data)
                 this.setDefaults()
-                return Axios.delete<T>(`${url}`, this.tenantApiConfig)
+                return axios.delete<T>(`${url}`, this.tenantApiConfig)
             }
         } catch (err: any) {
             apiRes = err.response
@@ -79,7 +79,7 @@ class AxiosClient {
             }
             throw apiRes
         }
-        return Axios.delete<T>(`${url}`, this.tenantApiConfig)
+        return axios.delete<T>(`${url}`, this.tenantApiConfig)
     }
 
     /**
@@ -97,9 +97,9 @@ class AxiosClient {
                 )
                 this.setTenantToken(response.data)
                 this.setDefaults()
-                apiRes = await Axios.post<T>(`${url}`, data, this.tenantApiConfig)
+                apiRes = await axios.post<T>(`${url}`, data, this.tenantApiConfig)
             } else {
-                apiRes = await Axios.post<T>(`${url}`, data, this.tenantApiConfig)
+                apiRes = await axios.post<T>(`${url}`, data, this.tenantApiConfig)
             }
         } catch (err: any) {
             apiRes = err.response
@@ -126,9 +126,9 @@ class AxiosClient {
                 )
                 this.setSystemToken(response.data)
                 this.setDefaults()
-                apiRes = await Axios.post<T>(`${url}`, data, this.systemApiConfig)
+                apiRes = await axios.post<T>(`${url}`, data, this.systemApiConfig)
             } else {
-                apiRes = await Axios.post<T>(`${url}`, data, this.systemApiConfig)
+                apiRes = await axios.post<T>(`${url}`, data, this.systemApiConfig)
             }
         } catch (err: any) {
             apiRes = err.response
@@ -146,20 +146,20 @@ class AxiosClient {
             )
             this.setTenantToken(response.data)
             this.setDefaults()
-            return Axios.get<T>(`${url}`, this.systemApiConfig)
+            return axios.get<T>(`${url}`, this.systemApiConfig)
         }
-        return Axios.get<T>(`${url}`, this.systemApiConfig)
+        return axios.get<T>(`${url}`, this.systemApiConfig)
     }
 
     // MVC call
     async getWeb<T = any>(url: string) {
-        return Axios.get<T>(url)
+        return axios.get<T>(url)
     }
     async postWeb<T = any>(url: string, payload: any) {
-        return Axios.post<T>(url, payload)
+        return axios.post<T>(url, payload)
     }
     async patchWeb<T = any>(url: string, payload: any) {
-        return Axios.patch<T>(url, payload)
+        return axios.patch<T>(url, payload)
     }
     // set the api configs - token and base url from cache
     private setDefaults() {
