@@ -116,6 +116,12 @@ export interface User {
   lastLogin?: string;
   role?: 'customer' | 'admin' | 'executive';
   permissions?: string[];
+  tenantId?: number;
+  bio?: string;
+  website?: string;
+  profilePicture?: string;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
 }
 
 export interface Address {
@@ -269,6 +275,9 @@ export interface MenuCategory {
   categoryId: number;
   category: string;
   active: boolean;
+  orderBy: number;
+  icon: string;
+  description: string;
 }
 
 export interface MenuItem {
@@ -278,7 +287,10 @@ export interface MenuItem {
   active: boolean;
   image: string;
   subMenu: boolean;
-  category?: MenuCategory[];
+  tenantId: number;
+  created: string;
+  modified: string;
+  category: MenuCategory[];
 }
 
 export interface MenuMaster {
