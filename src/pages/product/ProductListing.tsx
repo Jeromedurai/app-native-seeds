@@ -3,7 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { Product } from '../../types';
 import { formatPrice } from '../../utils';
-import { getProductsOnDemand, getProductsByCategoryOnDemand } from '../../services/mockData';
+import endpoints from '../../api/endpoints/endpoints';
+import { IProductSearchRequest, IProduct } from '../../modals/interface';
 import SearchBar from '../../components/filter/SearchBar';
 import FilterSidebar from '../../components/filter/FilterSidebar';
 import SortingDropdown from '../../components/product/SortingDropdown';
@@ -21,7 +22,7 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Local state for products and loading
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,41 +82,35 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
     setError(null);
 
     try {
-      const filterParams = {
+      // Build API request payload
+      const payload: IProductSearchRequest = {
+        page,
+        limit: 12,
         search: searchQuery,
-        priceRange: filters.priceRange,
-        categories: filters.categories.length > 0 ? filters.categories : (currentCategoryId ? [currentCategoryId] : undefined),
-        ratings: filters.ratings,
-        inStock: filters.inStock,
-        bestSeller: filters.bestSeller,
-        hasOffer: filters.hasOffer,
-        sortBy,
+        category: currentCategoryId || undefined,
+        minPrice: filters.priceRange.min,
+        maxPrice: filters.priceRange.max,
+        rating: filters.ratings.length > 0 ? filters.ratings.join(',') : '',
+        inStock: filters.inStock ? 'true' : '',
+        bestSeller: filters.bestSeller ? 'true' : '',
+        hasOffer: filters.hasOffer ? 'true' : '',
+        sortBy: sortBy === 'default' ? 'productName' : sortBy,
         sortOrder,
       };
 
-      let result: {
-        products: Product[];
-        total: number;
-        hasNext: boolean;
-        page: number;
-      };
+      const response = await endpoints.searchProducts(payload);
       
-      if (currentCategoryId && !filters.categories.length) {
-        result = await getProductsByCategoryOnDemand(currentCategoryId, page, 12, filterParams);
-      } else {
-        result = await getProductsOnDemand(page, 12, filterParams);
-      }
-
       if (append) {
-        setProducts(prev => [...prev, ...result.products]);
+        setProducts(prev => [...prev, ...response.data.products]);
       } else {
-        setProducts(result.products);
+        setProducts(response.data.products);
       }
       
-      setTotalProducts(result.total);
-      setHasNext(result.hasNext);
-      setCurrentPage(result.page);
+      setTotalProducts(response.data.pagination.total);
+      setHasNext(response.data.pagination.hasNext);
+      setCurrentPage(response.data.pagination.page);
     } catch (err) {
+      console.error('Failed to fetch products:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
     } finally {
       setIsLoading(false);
@@ -161,7 +156,48 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
     }
   };
 
-  const handleAddToCart = (product: Product) => {
+  // Convert IProduct to Product format for cart
+  const convertToCartProduct = (apiProduct: IProduct): Product => {
+    return {
+      productId: apiProduct.productId,
+      tenantId: apiProduct.tenantId,
+      productName: apiProduct.productName,
+      productDescription: apiProduct.productDescription,
+      productCode: apiProduct.productCode,
+      fullDescription: apiProduct.fullDescription,
+      specification: apiProduct.specification,
+      story: apiProduct.story,
+      packQuantity: apiProduct.packQuantity,
+      quantity: apiProduct.quantity,
+      total: apiProduct.total,
+      price: apiProduct.price,
+      categrory: apiProduct.category,
+      rating: apiProduct.rating,
+      active: apiProduct.active,
+      trending: apiProduct.trending,
+      userBuyCount: apiProduct.userBuyCount,
+      return: apiProduct.return,
+      created: apiProduct.created,
+      modified: apiProduct.modified,
+      in_stock: apiProduct.inStock,
+      best_seller: apiProduct.bestSeller,
+      deleveryDate: apiProduct.deliveryDate,
+      offer: apiProduct.offer,
+      orderBy: apiProduct.orderBy,
+      userId: apiProduct.userId,
+      overview: apiProduct.overview,
+      long_description: apiProduct.longDescription,
+      images: apiProduct.images.map(img => ({
+        imageId: img.imageId || 0,
+        poster: img.poster,
+        main: img.main,
+        active: img.active,
+        orderBy: img.orderBy || 0
+      }))
+    };
+  };
+
+  const handleAddToCart = (product: IProduct) => {
     // Check if user is authenticated
     if (!user) {
       // Save current location to return after login
@@ -174,7 +210,8 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
     }
     
     // User is authenticated, proceed with adding to cart
-    addToCart(product, 1);
+    const cartProduct = convertToCartProduct(product);
+    addToCart(cartProduct, 1);
   };
 
   const handleProductClick = (productId: number) => {
@@ -263,7 +300,7 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
     ));
   };
 
-  const getMainImage = (product: Product) => {
+  const getMainImage = (product: IProduct) => {
     const mainImage = product.images.find(img => img.main && img.active);
     return mainImage ? mainImage.poster : product.images[0]?.poster || '/placeholder-image.jpg';
   };
@@ -404,7 +441,7 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
                       
                       {/* Badges */}
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
-                        {product.best_seller && (
+                        {product.bestSeller && (
                           <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
                             Best Seller
                           </span>
@@ -419,11 +456,11 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
                       {/* Stock Status */}
                       <div className="absolute top-2 right-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          product.in_stock 
+                          product.inStock 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                          {product.inStock ? 'In Stock' : 'Out of Stock'}
                         </span>
                       </div>
                     </div>
@@ -469,23 +506,23 @@ const ProductListing: React.FC<ProductListingProps> = ({ categoryId, categoryNam
                       <div className="text-xs text-gray-500 mb-3">
                         <div>Code: {product.productCode}</div>
                         <div>Pack: {product.packQuantity} units</div>
-                        <div>Delivery: {product.deleveryDate} days</div>
+                        <div>Delivery: {product.deliveryDate} days</div>
                       </div>
 
                       {/* Add to Cart Button */}
                       <button
                         onClick={() => handleAddToCart(product)}
-                        disabled={!product.in_stock}
+                        disabled={!product.inStock}
                         className={`w-full py-2 px-4 rounded font-semibold transition-colors ${
-                          !product.in_stock
+                          !product.inStock
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : !user
                               ? 'bg-blue-600 text-white hover:bg-blue-700'
                               : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
-                        title={!user && product.in_stock ? 'Login required to add to cart' : ''}
+                        title={!user && product.inStock ? 'Login required to add to cart' : ''}
                       >
-                        {!product.in_stock 
+                        {!product.inStock 
                           ? 'Out of Stock' 
                           : !user 
                             ? 'Login to Add to Cart' 
