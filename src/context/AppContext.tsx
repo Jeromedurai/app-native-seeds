@@ -14,10 +14,11 @@ import {
   VerificationConfirm,
   SocialLoginData
 } from '../types';
-import { getProducts, getMenuItems, getProductsByCategory } from '../services/mockData';
+import { getProducts, getProductsByCategory } from '../services/mockData';
 import { mockCartApi } from '../services/mockCartApi';
 import { realAuthApi } from '../services/api';
 import { mockAuthApi } from '../services/mockAuthApi';
+import endpoints from '../api/endpoints/endpoints';
 import { generateId } from '../utils';
 
 // Action types
@@ -476,16 +477,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const fetchMenuItems = useCallback(async () => {
     try {
-      // Use mock data for development
-      const menuData = await getMenuItems();
-      // Filter only active menu items and sort by orderBy
-      const activeMenuItems = menuData.menuMaster
-        .filter(item => item.active)
-        .sort((a, b) => a.orderBy - b.orderBy);
+      // Fetch menu data from real API
+      const response = await endpoints.getMenuMaster();
       
-      dispatch({ type: 'SET_MENU_ITEMS', payload: activeMenuItems });
+      // Filter and sort menu items from API response
+      const menuItems: MenuItem[] = response.data.menuMaster
+        .filter(item => item.active) // Only include active items
+        .sort((a, b) => a.orderBy - b.orderBy) // Sort by orderBy
+        .map(item => ({
+          ...item,
+          category: item.category
+            .filter(cat => cat.active) // Only include active categories
+            .sort((a, b) => a.orderBy - b.orderBy) // Sort categories by orderBy
+        }));
+      
+      dispatch({ type: 'SET_MENU_ITEMS', payload: menuItems });
     } catch (error) {
-      console.error('Failed to fetch menu items:', error);
+      console.error('Failed to fetch menu items from API:', error);
+      // Fallback to empty array or you could show an error state
+      dispatch({ type: 'SET_MENU_ITEMS', payload: [] });
     }
   }, []);
 
