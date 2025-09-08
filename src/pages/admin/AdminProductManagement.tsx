@@ -1,69 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { 
-  Plus, Search, Filter, MoreVertical, Edit, Trash2, Eye, 
+  Plus, Search, MoreVertical, Edit, Trash2, Eye, 
   Package, Star, DollarSign, TrendingUp, AlertTriangle,
-  Upload, Download, Copy, BarChart3, Grid, List, Settings,
-  Image, Tag, Calendar, Users, CheckCircle, XCircle, Clock
+  Upload, Download, BarChart3, Grid, List, Settings,
+  CheckCircle, XCircle
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { formatPrice } from '../../utils';
+import endpoints from '../../api/endpoints/endpoints';
+import { IProduct, IProductSearchRequest, IAddProductRequest, IUpdateProductRequest } from '../../modals/interface';
 
-interface ProductVariant {
-  id: string;
-  type: string;
-  value: string;
-  price?: number;
-  stock?: number;
-}
 
-interface ProductImage {
-  id: string;
-  url: string;
-  alt: string;
-  isPrimary: boolean;
-}
-
-interface AdminProduct {
-  id: string;
-  name: string;
-  description: string;
-  shortDescription: string;
-  price: number;
-  originalPrice?: number;
-  discount?: number;
-  stock: number;
-  lowStockThreshold: number;
-  sku: string;
-  category: string;
-  subcategory?: string;
-  tags: string[];
-  status: 'active' | 'inactive' | 'draft';
-  visibility: 'visible' | 'hidden';
-  images: ProductImage[];
-  variants: ProductVariant[];
-  weight?: number;
-  dimensions?: {
-    length: number;
-    width: number;
-    height: number;
-  };
-  seo: {
-    title: string;
-    description: string;
-    keywords: string[];
-  };
-  createdAt: string;
-  updatedAt: string;
-  salesCount: number;
-  rating: number;
-  reviewCount: number;
-}
 
 const AdminProductManagement: React.FC = () => {
   const { user } = useAppContext();
-  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -71,146 +22,58 @@ const AdminProductManagement: React.FC = () => {
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [editingProduct, setEditingProduct] = useState<IProduct | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Mock data - replace with real API
-  useEffect(() => {
-    const loadProducts = async () => {
-      setIsLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockProducts: AdminProduct[] = [
-        {
-          id: '1',
-          name: 'Himalayan Apple Seeds',
-          description: 'Premium quality apple seeds from the Himalayan region. Perfect for growing your own apple trees.',
-          shortDescription: 'Premium Himalayan apple seeds for planting',
-          price: 29.99,
-          originalPrice: 39.99,
-          discount: 25,
-          stock: 150,
-          lowStockThreshold: 20,
-          sku: 'HAS-001',
-          category: 'Seeds',
-          subcategory: 'Fruit Seeds',
-          tags: ['organic', 'himalayan', 'apple', 'premium'],
-          status: 'active',
-          visibility: 'visible',
-          images: [
-            { id: '1', url: '/api/placeholder/400/400', alt: 'Apple Seeds', isPrimary: true },
-            { id: '2', url: '/api/placeholder/400/400', alt: 'Apple Seeds Pack', isPrimary: false }
-          ],
-          variants: [
-            { id: '1', type: 'package', value: '10 seeds', price: 29.99, stock: 150 },
-            { id: '2', type: 'package', value: '25 seeds', price: 59.99, stock: 80 }
-          ],
-          weight: 0.05,
-          dimensions: { length: 10, width: 8, height: 2 },
-          seo: {
-            title: 'Himalayan Apple Seeds - Premium Quality',
-            description: 'Buy premium Himalayan apple seeds online. Perfect for home gardening.',
-            keywords: ['apple seeds', 'himalayan', 'organic', 'gardening']
-          },
-          createdAt: '2024-01-15',
-          updatedAt: '2024-01-20',
-          salesCount: 245,
-          rating: 4.8,
-          reviewCount: 32
-        },
-        {
-          id: '2',
-          name: 'Orange Tree Saplings',
-          description: 'Healthy orange tree saplings ready for transplanting. Grown organically.',
-          shortDescription: 'Organic orange tree saplings',
-          price: 45.00,
-          stock: 75,
-          lowStockThreshold: 10,
-          sku: 'OTS-002',
-          category: 'Plants',
-          subcategory: 'Fruit Plants',
-          tags: ['organic', 'orange', 'sapling', 'citrus'],
-          status: 'active',
-          visibility: 'visible',
-          images: [
-            { id: '3', url: '/api/placeholder/400/400', alt: 'Orange Sapling', isPrimary: true }
-          ],
-          variants: [
-            { id: '3', type: 'size', value: 'Small (6-12 inches)', price: 45.00, stock: 75 },
-            { id: '4', type: 'size', value: 'Medium (12-18 inches)', price: 65.00, stock: 45 }
-          ],
-          weight: 2.5,
-          dimensions: { length: 30, width: 15, height: 15 },
-          seo: {
-            title: 'Orange Tree Saplings - Organic Citrus Plants',
-            description: 'Premium orange tree saplings for your garden. Organic and healthy.',
-            keywords: ['orange sapling', 'citrus', 'organic', 'fruit tree']
-          },
-          createdAt: '2024-01-10',
-          updatedAt: '2024-01-18',
-          salesCount: 128,
-          rating: 4.6,
-          reviewCount: 18
-        },
-        {
-          id: '3',
-          name: 'Herb Garden Starter Kit',
-          description: 'Complete kit with various herb seeds and planting materials.',
-          shortDescription: 'Complete herb garden starter kit',
-          price: 35.99,
-          stock: 5,
-          lowStockThreshold: 10,
-          sku: 'HGK-003',
-          category: 'Kits',
-          subcategory: 'Garden Kits',
-          tags: ['herbs', 'starter kit', 'beginner', 'organic'],
-          status: 'active',
-          visibility: 'visible',
-          images: [
-            { id: '4', url: '/api/placeholder/400/400', alt: 'Herb Garden Kit', isPrimary: true }
-          ],
-          variants: [
-            { id: '5', type: 'variety', value: 'Basic (5 herbs)', price: 35.99, stock: 5 },
-            { id: '6', type: 'variety', value: 'Premium (10 herbs)', price: 55.99, stock: 12 }
-          ],
-          weight: 1.2,
-          dimensions: { length: 25, width: 20, height: 8 },
-          seo: {
-            title: 'Herb Garden Starter Kit - Everything You Need',
-            description: 'Complete herb garden kit with seeds and materials. Perfect for beginners.',
-            keywords: ['herb garden', 'starter kit', 'herbs', 'gardening']
-          },
-          createdAt: '2024-01-05',
-          updatedAt: '2024-01-15',
-          salesCount: 89,
-          rating: 4.9,
-          reviewCount: 24
-        }
-      ];
-      
-      setProducts(mockProducts);
-      setIsLoading(false);
-    };
+  // Load products from API
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const payload: IProductSearchRequest = {
+        page: 1,
+        limit: 10000, // Fetch all products for admin grid
+        search: '',
+        minPrice: 0,
+        maxPrice: 1000000,
+        rating: '',
+        inStock: '',
+        bestSeller: '',
+        hasOffer: '',
+        sortBy: 'productName',
+        sortOrder: 'asc'
+      };
 
+      const response = await endpoints.searchProducts(payload);
+      setProducts(response.data.products);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadProducts();
   }, []);
 
   // Filter and search logic
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = product.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           product.productCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           product.productDescription.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
-      const matchesStatus = filterStatus === 'all' || product.status === filterStatus;
+      const matchesCategory = filterCategory === 'all' || product.category.toString() === filterCategory;
+      const matchesStatus = filterStatus === 'all' || 
+                           (filterStatus === 'active' && product.active) ||
+                           (filterStatus === 'inactive' && !product.active);
       
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -223,28 +86,28 @@ const AdminProductManagement: React.FC = () => {
       
       switch (sortBy) {
         case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = a.productName.toLowerCase();
+          bValue = b.productName.toLowerCase();
           break;
         case 'price':
           aValue = a.price;
           bValue = b.price;
           break;
         case 'stock':
-          aValue = a.stock;
-          bValue = b.stock;
+          aValue = a.quantity;
+          bValue = b.quantity;
           break;
         case 'sales':
-          aValue = a.salesCount;
-          bValue = b.salesCount;
+          aValue = a.userBuyCount;
+          bValue = b.userBuyCount;
           break;
         case 'rating':
           aValue = a.rating;
           bValue = b.rating;
           break;
         case 'created':
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
+          aValue = new Date(a.created).getTime();
+          bValue = new Date(b.created).getTime();
           break;
         default:
           return 0;
@@ -265,87 +128,92 @@ const AdminProductManagement: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'inactive':
-        return 'bg-red-100 text-red-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const getStatusColor = (active: boolean) => {
+    if (active) {
+      return 'bg-green-100 text-green-800';
+    } else {
+      return 'bg-red-100 text-red-800';
     }
   };
 
-  const getStockStatus = (stock: number, threshold: number) => {
+  const getStockStatus = (stock: number, threshold: number = 10) => {
     if (stock === 0) return { color: 'text-red-600', label: 'Out of Stock' };
     if (stock <= threshold) return { color: 'text-yellow-600', label: 'Low Stock' };
     return { color: 'text-green-600', label: 'In Stock' };
   };
 
   // CRUD Functions
-  const handleCreateProduct = (productData: Partial<AdminProduct>) => {
-    const newProduct: AdminProduct = {
-      id: Date.now().toString(),
-      name: productData.name || '',
-      description: productData.description || '',
-      shortDescription: productData.shortDescription || '',
-      price: productData.price || 0,
-      originalPrice: productData.originalPrice,
-      discount: productData.discount,
-      stock: productData.stock || 0,
-      lowStockThreshold: productData.lowStockThreshold || 10,
-      sku: productData.sku || '',
-      category: productData.category || '',
-      subcategory: productData.subcategory,
-      tags: productData.tags || [],
-      status: productData.status || 'draft',
-      visibility: productData.visibility || 'visible',
-      images: productData.images || [],
-      variants: productData.variants || [],
-      weight: productData.weight,
-      dimensions: productData.dimensions,
-      seo: productData.seo || {
-        title: '',
-        description: '',
-        keywords: []
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      salesCount: 0,
-      rating: 0,
-      reviewCount: 0
-    };
+  const handleCreateProduct = async (productData: any) => {
+    try {
+      const payload: IAddProductRequest = {
+        productName: productData.name || '',
+        productDescription: productData.description || '',
+        productCode: productData.sku || '',
+        price: productData.price || 0,
+        category: parseInt(productData.category) || 1,
+        quantity: productData.stock || 0,
+        total: productData.stock || 0,
+        userId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 1)
+      };
 
-    setProducts([...products, newProduct]);
-    setShowCreateModal(false);
+      await endpoints.addProduct(payload);
+      await loadProducts(); // Reload products after adding
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Failed to create product:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
-  const handleUpdateProduct = (productData: Partial<AdminProduct>) => {
+  const handleUpdateProduct = async (productData: any) => {
     if (!editingProduct) return;
 
-    const updatedProduct: AdminProduct = {
-      ...editingProduct,
-      ...productData,
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      const payload: IUpdateProductRequest = {
+        productId: editingProduct.productId,
+        productName: productData.name || editingProduct.productName,
+        productDescription: productData.description || editingProduct.productDescription,
+        productCode: productData.sku || editingProduct.productCode,
+        price: productData.price || editingProduct.price,
+        category: parseInt(productData.category) || editingProduct.category,
+        quantity: productData.stock || editingProduct.quantity,
+        total: productData.stock || editingProduct.total,
+        userId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 1)
+      };
 
-    setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
-    setShowEditModal(false);
-    setEditingProduct(null);
+      await endpoints.updateProduct(payload);
+      await loadProducts(); // Reload products after updating
+      setShowEditModal(false);
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('Failed to update product:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
-  const handleDeleteProducts = () => {
-    setProducts(products.filter(p => !selectedProducts.includes(p.id)));
-    setSelectedProducts([]);
-    setShowDeleteModal(false);
+  const handleDeleteProducts = async () => {
+    try {
+      // Delete all selected products
+      await Promise.all(selectedProducts.map(productId => endpoints.deleteProduct(productId)));
+      await loadProducts(); // Reload products after deleting
+      setSelectedProducts([]);
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error('Failed to delete products:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
-  const handleDeleteSingleProduct = (productId: string) => {
-    setProducts(products.filter(p => p.id !== productId));
-    setShowDeleteModal(false);
-    setDeletingProductId(null);
+  const handleDeleteSingleProduct = async (productId: number) => {
+    try {
+      await endpoints.deleteProduct(productId);
+      await loadProducts(); // Reload products after deleting
+      setShowDeleteModal(false);
+      setDeletingProductId(null);
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   if (!user) {
@@ -414,7 +282,7 @@ const AdminProductManagement: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Active Products</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {products.filter(p => p.status === 'active').length}
+                  {products.filter(p => p.active).length}
                 </p>
               </div>
             </div>
@@ -428,7 +296,7 @@ const AdminProductManagement: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Low Stock</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {products.filter(p => p.stock <= p.lowStockThreshold).length}
+                  {products.filter(p => p.quantity <= 10).length}
                 </p>
               </div>
             </div>
@@ -442,7 +310,7 @@ const AdminProductManagement: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Sales</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {products.reduce((sum, p) => sum + p.salesCount, 0)}
+                  {products.reduce((sum, p) => sum + p.userBuyCount, 0)}
                 </p>
               </div>
             </div>
@@ -578,7 +446,7 @@ const AdminProductManagement: React.FC = () => {
                         className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedProducts(paginatedProducts.map(p => p.id));
+                            setSelectedProducts(paginatedProducts.map(p => p.productId));
                           } else {
                             setSelectedProducts([]);
                           }
@@ -613,19 +481,19 @@ const AdminProductManagement: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedProducts.map((product) => {
-                    const stockStatus = getStockStatus(product.stock, product.lowStockThreshold);
+                    const stockStatus = getStockStatus(product.quantity, 10);
                     return (
-                      <tr key={product.id} className="hover:bg-gray-50">
+                      <tr key={product.productId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <input
                             type="checkbox"
                             className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            checked={selectedProducts.includes(product.id)}
+                            checked={selectedProducts.includes(product.productId)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedProducts([...selectedProducts, product.id]);
+                                setSelectedProducts([...selectedProducts, product.productId]);
                               } else {
-                                setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                                setSelectedProducts(selectedProducts.filter(id => id !== product.productId));
                               }
                             }}
                           />
@@ -635,23 +503,23 @@ const AdminProductManagement: React.FC = () => {
                             <div className="flex-shrink-0 h-12 w-12">
                               <img 
                                 className="h-12 w-12 rounded-lg object-cover" 
-                                src={product.images[0]?.url || '/api/placeholder/48/48'} 
-                                alt={product.name} 
+                                src={product.images[0]?.poster || '/api/placeholder/48/48'} 
+                                alt={product.productName} 
                               />
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
-                                {product.name}
+                                {product.productName}
                               </div>
                               <div className="text-sm text-gray-500 flex items-center mt-1">
                                 <Star className="w-3 h-3 text-yellow-400 mr-1" />
-                                {product.rating} ({product.reviewCount})
+                                {product.rating} ({product.userBuyCount})
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.sku}
+                          {product.productCode}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {product.category}
@@ -660,28 +528,23 @@ const AdminProductManagement: React.FC = () => {
                           <div className="flex items-center">
                             <DollarSign className="w-3 h-3 mr-1" />
                             {product.price}
-                            {product.originalPrice && (
-                              <span className="ml-2 text-xs text-gray-400 line-through">
-                                ${product.originalPrice}
-                              </span>
-                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <span className={`font-medium ${stockStatus.color}`}>
-                            {product.stock}
+                            {product.quantity}
                           </span>
                           <div className={`text-xs ${stockStatus.color}`}>
                             {stockStatus.label}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.status)}`}>
-                            {product.status}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.active)}`}>
+                            {product.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.salesCount}
+                          {product.userBuyCount}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
@@ -699,7 +562,7 @@ const AdminProductManagement: React.FC = () => {
                             </button>
                             <button 
                               onClick={() => {
-                                setDeletingProductId(product.id);
+                                setDeletingProductId(product.productId);
                                 setShowDeleteModal(true);
                               }}
                               className="text-red-600 hover:text-red-900"
@@ -721,30 +584,30 @@ const AdminProductManagement: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {paginatedProducts.map((product) => {
-              const stockStatus = getStockStatus(product.stock, product.lowStockThreshold);
+              const stockStatus = getStockStatus(product.quantity, 10);
               return (
-                <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                <div key={product.productId} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                   <div className="relative">
                     <img 
-                      src={product.images[0]?.url || '/api/placeholder/300/200'} 
-                      alt={product.name} 
+                      src={product.images[0]?.poster || '/api/placeholder/300/200'} 
+                      alt={product.productName} 
                       className="w-full h-48 object-cover"
                     />
-                    {product.discount && (
+                    {product.offer && (
                       <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
-                        -{product.discount}%
+                        {product.offer} OFF
                       </div>
                     )}
                     <div className="absolute top-2 right-2">
                       <input
                         type="checkbox"
                         className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        checked={selectedProducts.includes(product.id)}
+                        checked={selectedProducts.includes(product.productId)}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedProducts([...selectedProducts, product.id]);
+                            setSelectedProducts([...selectedProducts, product.productId]);
                           } else {
-                            setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                            setSelectedProducts(selectedProducts.filter(id => id !== product.productId));
                           }
                         }}
                       />
@@ -753,40 +616,35 @@ const AdminProductManagement: React.FC = () => {
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-sm font-medium text-gray-900 truncate flex-1 mr-2">
-                        {product.name}
+                        {product.productName}
                       </h3>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.status)}`}>
-                        {product.status}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.active)}`}>
+                        {product.active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     
                     <div className="flex items-center mb-2">
                       <Star className="w-3 h-3 text-yellow-400 mr-1" />
-                      <span className="text-sm text-gray-600">{product.rating} ({product.reviewCount})</span>
+                      <span className="text-sm text-gray-600">{product.rating} ({product.userBuyCount})</span>
                     </div>
                     
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center">
                         <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
                         <span className="text-lg font-bold text-gray-900">{product.price}</span>
-                        {product.originalPrice && (
-                          <span className="ml-2 text-sm text-gray-400 line-through">
-                            ${product.originalPrice}
-                          </span>
-                        )}
                       </div>
-                      <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+                      <span className="text-sm text-gray-500">SKU: {product.productCode}</span>
                     </div>
                     
                     <div className="flex items-center justify-between mb-4">
                       <div className="text-sm">
                         <span className="text-gray-500">Stock: </span>
                         <span className={`font-medium ${stockStatus.color}`}>
-                          {product.stock}
+                          {product.quantity}
                         </span>
                       </div>
                       <div className="text-sm text-gray-500">
-                        Sales: {product.salesCount}
+                        Sales: {product.userBuyCount}
                       </div>
                     </div>
                     
@@ -921,8 +779,8 @@ const AdminProductManagement: React.FC = () => {
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (product: Partial<AdminProduct>) => void;
-  product?: AdminProduct;
+  onSave: (product: any) => void;
+  product?: IProduct;
   title: string;
 }
 
@@ -933,58 +791,33 @@ const ProductModal: React.FC<ProductModalProps> = ({
   product,
   title
 }) => {
-  const [formData, setFormData] = useState<Partial<AdminProduct>>({
+  const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
-    shortDescription: '',
     price: 0,
-    originalPrice: 0,
     stock: 0,
-    lowStockThreshold: 10,
     sku: '',
-    category: '',
-    subcategory: '',
-    tags: [],
-    status: 'draft',
-    visibility: 'visible',
-    images: [],
-    variants: [],
-    weight: 0,
-    seo: {
-      title: '',
-      description: '',
-      keywords: []
-    }
+    category: 1,
+    active: true
   });
 
   const [activeTab, setActiveTab] = useState('basic');
-  const [tagInput, setTagInput] = useState('');
-
   useEffect(() => {
     if (product) {
-      setFormData(product);
+      setFormData({
+        name: product.productName,
+        description: product.productDescription,
+        price: product.price,
+        stock: product.quantity,
+        sku: product.productCode,
+        category: product.category,
+        active: product.active
+      });
     }
   }, [product]);
 
   const handleSave = () => {
     onSave(formData);
-  };
-
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...(formData.tags || []), tagInput.trim()]
-      });
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
-    });
   };
 
   if (!isOpen) return null;
@@ -1108,53 +941,15 @@ const ProductModal: React.FC<ProductModalProps> = ({
                       Status
                     </label>
                     <select
-                      value={formData.status || 'draft'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                      value={formData.active ? 'active' : 'inactive'}
+                      onChange={(e) => setFormData({ ...formData, active: e.target.value === 'active' })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     >
-                      <option value="draft">Draft</option>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tags
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {formData.tags?.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                        >
-                          {tag}
-                          <button
-                            onClick={() => removeTag(tag)}
-                            className="ml-1 text-green-600 hover:text-green-800"
-                          >
-                            <XCircle className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex">
-                      <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Add tags"
-                      />
-                      <button
-                        onClick={addTag}
-                        className="px-4 py-2 bg-green-600 text-white rounded-r-lg hover:bg-green-700"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
                 </div>
               )}
 
